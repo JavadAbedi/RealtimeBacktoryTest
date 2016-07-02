@@ -38,6 +38,7 @@ public class ConnectToRealtimeServer {
         serverHandler.OnMessage += onMessage;
         serverHandler.OnConnect += onConnect;
         serverHandler.OnDisconnect += onDisconnect;
+        serverHandler.OnConnected += onConnected;
         serverHandler.OnException += onException;
         serverHandler.OnDirectChatMessage += onDirectChatMessage;
         serverHandler.OnChallengeChatMessage += onChallengeChatMessage;
@@ -54,7 +55,6 @@ public class ConnectToRealtimeServer {
         serverHandler.OnStartedWebhookMessage += onStartedWebhookMessage;
         serverHandler.OnChallengeEndedMessage += onChallengeEndedMessage;
         serverHandler.OnChallengeDisconnectMessage += onChallengeDisconnectMessage;
-        serverHandler.OnChallengeLeavedMessage += onChallengeLeavedMessage;
     }
     
     public void onMessage(String message) {
@@ -68,6 +68,10 @@ public class ConnectToRealtimeServer {
     public void onDisconnect() {
         addToConsole("---Disconnected");
     }
+    
+    public void onConnected(String userId) {
+		addToConsole("---Connected: " + "userId: " + userId);
+	}
 
     public void onException(String exceptionsString) {
         addToConsole("---Exceptions: " + exceptionsString);
@@ -119,11 +123,6 @@ public class ConnectToRealtimeServer {
     public void onChallengeDisconnectMessage(ChallengeDisconnectMessage dcMessage) {
         addToConsole("---User with id " + dcMessage.userId + " disconnected");
     }
-    public void onChallengeLeavedMessage(ChallengeLeavedMessage leavedMessage) {
-        addToConsole("---Challenge leaved by: " + leavedMessage.userId + ", " +
-                leavedMessage.username);
-    }
-
     
     void addToConsole(String str) {
 		tConsole.text = str + "\n" + tConsole.text;

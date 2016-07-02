@@ -3,12 +3,20 @@ using UnityEngine.UI;
 using System;
 
 public class CanvasController : MonoBehaviour {
+	// backtory
 	public static string AUTHENTICATION_ID = "5738186ae4b0179857153b63";
 	public static string AUTHENTICATION_KEY = "5738186ae4b09a52993fe413";
 	public static string CONNECTIVITY_ID = "573818b7e4b0179857153b72";
-	public Button bConnect, bMatchMaking, bDisconnect, bClear, bGameMessage, bChat;
+	
+	// local
+	// public static string AUTHENTICATION_ID = "57163ee5e4b0cad8c4dd1844";
+	// public static string AUTHENTICATION_KEY = "57163ee5e4b093ed2821a011";
+	// public static string CONNECTIVITY_ID = "57284ac1e4b01c017afb4015";
+	public Button bLogin, bRegister, bConnect, bMatchMaking, bDisconnect, bClear, bGameMessage, bChat,
+		bCreate, bGroupList, bUserList, bAdd, bRemove, bJoin, bLeave, bSendToGroup, bSendToUser, 
+		bInvite, bAddOwner, bOffline, bHistoryGroup, bHistoryDirect;
 	public Text tConsole;
-	public InputField etUsername, etPassword, etMessage;
+	public InputField etUsername, etPassword, etFirstName, etLastName, etMessage, etGroupId, etUserId;
 	string access_token = null;
 	ConnectivityServerHandler serverHandler = new ConnectivityServerHandler(CONNECTIVITY_ID);
 	ConnectToRealtimeServer connectToRealtimeServer;
@@ -18,12 +26,26 @@ public class CanvasController : MonoBehaviour {
 	void Start () {
 		bConnect.onClick.AddListener(() => {
 			addToConsole("connecting ...");
-			authentication.login(etUsername.text, etPassword.text, (Login login) => {
+			if (access_token != null) {
+				serverHandler.InitWebSocket(access_token);
+			} else {
+				addToConsole("login first please.");
+			}
+		});
+		
+		bLogin.onClick.AddListener(() => {
+			authentication.login(etUsername.text, etPassword.text, (LoginResponse login) => {
 				if (login.access_token != null) {
-					addToConsole("connected");
+					addToConsole("logged in");
 					access_token = login.access_token;
-					serverHandler.InitWebSocket(access_token);
 				}
+			});
+		});
+		
+		bRegister.onClick.AddListener(() => {
+			authentication.register(etUsername.text, etPassword.text, 
+				etFirstName.text, etLastName.text, (RegisterResponse registerResponse) => {
+				addToConsole("signed up");
 			});
 		});
 		
@@ -36,7 +58,7 @@ public class CanvasController : MonoBehaviour {
 		});
 		
 		bMatchMaking.onClick.AddListener(() => {
-			serverHandler.matchmakingRequest("matchmaking1", 55);
+			serverHandler.matchmakingRequest("matchmaking1", 55, "sample meta data");
 		});
 		
 		bGameMessage.onClick.AddListener(() => {
@@ -46,7 +68,62 @@ public class CanvasController : MonoBehaviour {
 		bChat.onClick.AddListener(() => {
 			connectToRealtimeServer.sendToChallengeChat(etMessage.text);
 		});
-				
+		
+		bCreate.onClick.AddListener(() => {
+			serverHandler.createGroupChat(etGroupId.text, ConnectivityServerHandler.GROUP_TYPE_PUBLIC);
+		});
+		
+		bGroupList.onClick.AddListener(() => {
+			serverHandler.listChatGroups();
+		});
+		
+		bUserList.onClick.AddListener(() => {
+			serverHandler.listChatGroupMembers(etGroupId.text);
+		});
+		
+		bAdd.onClick.AddListener(() => {
+			serverHandler.addMemberToChatGroup(etGroupId.text, etUserId.text);
+		});
+		
+		bRemove.onClick.AddListener(() => {
+			serverHandler.removeMemberFromChatGroup(etGroupId.text, etUserId.text);
+		});
+		
+		bJoin.onClick.AddListener(() => {
+			serverHandler.joinChatGroup(etGroupId.text);
+		});
+		
+		bLeave.onClick.AddListener(() => {
+			serverHandler.leaveChatGroup(etGroupId.text);
+		});
+		
+		bSendToGroup.onClick.AddListener(() => {
+			serverHandler.sendChatToGroup(etGroupId.text, etMessage.text);
+		});
+		
+		bSendToUser.onClick.AddListener(() => {
+			serverHandler.sendChatToUser(etUserId.text, etMessage.text);
+		});
+		
+		bInvite.onClick.AddListener(() => {
+			serverHandler.inviteToChatGroup(etGroupId.text, etUserId.text);
+		});
+		
+		bAddOwner.onClick.AddListener(() => {
+			serverHandler.addOwnerToChatGroup(etGroupId.text, etUserId.text);
+		});
+		
+		bOffline.onClick.AddListener(() => {
+			serverHandler.offlineMessageRequest();
+		});
+		
+		bHistoryGroup.onClick.AddListener(() => {
+			serverHandler.groupHistory(new DateTime().Millisecond, etGroupId.text);
+		});
+		
+		bHistoryDirect.onClick.AddListener(() => {
+			serverHandler.directHistory(new DateTime().Millisecond);
+		});		
 		addListenerToServerHandler();
 	}
 	
@@ -62,7 +139,92 @@ public class CanvasController : MonoBehaviour {
 		serverHandler.OnMatchNotFound += onMatchNotFound;
 		serverHandler.OnMatchUpdate += onMatchUpdate;
 		serverHandler.OnChatMessage += onChatMessage;
-		serverHandler.OnPushMessage += onPushMessage;
+		serverHandler.OnConnected += onConnected;
+		serverHandler.OnDisconnect += onDisconnect;
+		
+		// Chat
+		serverHandler.OnChatGroupCreatedMessage += onChatGroupCreatedMessage;
+		serverHandler.OnChatGroupsListMessage += onChatGroupsListMessage;
+		serverHandler.OnUserChatHistoryMessage += onUserChatHistoryMessage;
+		serverHandler.OnGroupChatHistoryMessage += onGroupChatHistoryMessage;
+		serverHandler.OnGroupPushMessage += onGroupPushMessage;
+		serverHandler.OnGroupChatMessage += onGroupChatMessage;
+		serverHandler.OnChatGroupMembersListMessage += onChatGroupMembersListMessage;
+		serverHandler.OnChatGroupOwnerAddedMessage += onChatGroupOwnerAddedMessage;
+		serverHandler.OnChatGroupLeftMessage += onChatGroupLeftMessage;
+		serverHandler.OnChatGroupInvitedMessage += onChatGroupInvitedMessage;
+		serverHandler.OnChatGroupUserRemovedMessage += onChatGroupUserRemovedMessage;
+		serverHandler.OnChatGroupUserLeftMessage += onChatGroupUserLeftMessage;
+		serverHandler.OnChatGroupUserJoinedMessage += onChatGroupUserJoinedMessage;
+		serverHandler.OnChatGroupUserAddedMessage += onChatGroupUserAddedMessage;
+		serverHandler.OnChatInvitationMessage += onChatInvitationMessage;
+		serverHandler.OnEmptyOffline += onEmptyOffline;
+	}
+	
+	public void onChatGroupCreatedMessage(ChatGroupCreatedMessage createdMessage) {
+		addToConsole("Created message: " + createdMessage.groupId);
+	}
+	
+	public void onUserChatHistoryMessage(UserChatHistoryMessage historyMessage) {
+		addToConsole("User chat history message received: " + historyMessage.messageList.Count);
+	}
+	
+	public void onGroupChatHistoryMessage(GroupChatHistoryMessage historyMessage) {
+		addToConsole("Group chat history message received: " + historyMessage.messageList.Count);
+	}
+    
+	public void onGroupPushMessage(SimpleChatMessage chatMessage) {
+		addToConsole("Group push message: " + chatMessage.groupId + " " 
+			+ chatMessage.message);
+	}
+	
+	public void onGroupChatMessage(SimpleChatMessage chatMessage) {
+		addToConsole("Group chat message: " + chatMessage.groupId + " " + chatMessage.senderId + " "
+			+ chatMessage.message);
+	}
+	
+	public void onChatGroupMembersListMessage(ChatGroupMembersListMessage groupMembersList) {
+		addToConsole("Group members list message: " + groupMembersList.groupMemberList.Count);
+	}
+	
+	public void onChatGroupsListMessage(ChatGroupsListMessage groupListMessage) {
+		addToConsole("Chat groups list message: " + groupListMessage.groupIdList.Count);
+	}
+	
+	public void onChatGroupOwnerAddedMessage(ChatGroupOwnerAddedMessage groupOwnerAddedMessage) {
+		addToConsole("Chat group owner added message: " + groupOwnerAddedMessage.groupId);
+	}
+	
+	public void onChatGroupLeftMessage(ChatGroupLeftMessage leftMessage) {
+		addToConsole("Chat group left message: " + " " + leftMessage.groupId);
+	}
+	
+	public void onChatGroupInvitedMessage(ChatGroupInvitedMessage invitedMessage) {
+		addToConsole("Chat group invited message: " + invitedMessage.callerId);
+	}
+	
+	public void onChatGroupUserRemovedMessage(UserRemovedMessage userRemovedMessage) {
+		addToConsole("Chat group user removed message: " + userRemovedMessage.removedUserId);
+	}
+	
+	public void onChatGroupUserLeftMessage(UserLeftMessage userLeftMessage) {
+		addToConsole("Chat group user left message: " + userLeftMessage.userId);
+	}
+	
+	public void onChatGroupUserJoinedMessage(UserJoinedMessage userJoinedMessage) {
+		addToConsole("Chat group user joined message: " + userJoinedMessage.userId);
+	}
+	
+	public void onChatGroupUserAddedMessage(UserAddedMessage userAddedMessage) {
+		addToConsole("Chat group user added message: " + userAddedMessage.adderUserId);
+	}
+	
+	public void onChatInvitationMessage(ChatInvitationMessage invitationMessage) {
+		addToConsole("Chat invitation message: " + invitationMessage.groupName);
+	}
+	
+	public void onEmptyOffline() {
+		addToConsole("Empty offline");
 	}
 	
 	public void onMatchFound(MatchFoundMessage matchFoundMessage) {
@@ -105,7 +267,7 @@ public class CanvasController : MonoBehaviour {
 
 	public void onMatchNotFound(MatchNotFoundMessage matchNotFoundMessage) {
 		addToConsole("---Matchmaking with id " +
-				matchNotFoundMessage.requestId + " not found");
+				matchNotFoundMessage.requestId + " not found" + " " + matchNotFoundMessage.metaData);
 	}
 	
 	public void onMatchUpdate(MatchUpdateMessage matchUpdateMessage) {
@@ -113,13 +275,16 @@ public class CanvasController : MonoBehaviour {
 				+ matchUpdateMessage.requestId + " updated");
 	}
 	
-	public void onChatMessage(ChatMessage chatMessage) {
-		addToConsole("---Chat message: " + chatMessage.message + " from: " + chatMessage.senderId
-				+ " at: " + chatMessage.date);
+	public void onChatMessage(SimpleChatMessage chatMessage) {
+		addToConsole("---Chat message: " + chatMessage.message + " at: " + chatMessage.date);
 	}
 
-	public void onPushMessage(PushNotifMessage pushNotifMessage) {
-		addToConsole("---Push message: " + pushNotifMessage.message);
+	public void onConnected(String userId) {
+		addToConsole("---Connected: " + "userId: " + userId);
+	}
+	
+	public void onDisconnect() {
+		addToConsole("---Disconnect");
 	}
 
 	// Update is called once per frame
