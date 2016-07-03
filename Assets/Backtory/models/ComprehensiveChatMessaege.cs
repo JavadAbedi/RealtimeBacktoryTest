@@ -7,6 +7,7 @@ public class ComprehensiveChatMessaege : BacktoryConnectivityMessage {
     public string groupName;
 
     public string senderId;
+    public string receiverId;
     public string message;
 
     public string adderUserId;

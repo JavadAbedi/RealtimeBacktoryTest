@@ -42,9 +42,9 @@ public class ConnectivityServerHandler {
 
     public delegate void onChatGroupCreatedMessage(ChatGroupCreatedMessage createdMessage);
     public event onChatGroupCreatedMessage OnChatGroupCreatedMessage;
-    public delegate void onUserChatHistoryMessage(UserChatHistoryMessage historyMessage);
+    public delegate void onUserChatHistoryMessage(List<ChatMessage> messageList);
     public event onUserChatHistoryMessage OnUserChatHistoryMessage;
-    public delegate void onGroupChatHistoryMessage(GroupChatHistoryMessage historyMessage);
+    public delegate void onGroupChatHistoryMessage(List<ChatMessage> messageList, string groupId);
     public event onGroupChatHistoryMessage OnGroupChatHistoryMessage;
     public delegate void onGroupPushMessage(SimpleChatMessage chatMessage);
     public event onGroupPushMessage OnGroupPushMessage;
@@ -70,8 +70,8 @@ public class ConnectivityServerHandler {
     public event onChatGroupUserAddedMessage OnChatGroupUserAddedMessage;
     public delegate void onChatInvitationMessage(ChatInvitationMessage invitationMessage);
     public event onChatInvitationMessage OnChatInvitationMessage;
-    public delegate void onEmptyOffline();
-    public event onEmptyOffline OnEmptyOffline;
+    public delegate void onOfflineChatMessage(List<ChatMessage> messageList);
+    public event onOfflineChatMessage OnOfflineChatMessage;
 
 	string connectivityId;
 	private List<string> requestList = new List<string>();
@@ -212,50 +212,24 @@ public class ConnectivityServerHandler {
                     Debug.Log(BacktoryConnectivityMessage.USER_CHAT_HISTORY_MESSAGE);
 					UserChatHistoryMessage historyMessage = (UserChatHistoryMessage) 
 						fastJSON.JSON.ToObject(body, typeof(UserChatHistoryMessage));
-					OnUserChatHistoryMessage(historyMessage);
+					List<ChatMessage> messageList = parseMessageList(historyMessage.messageList, false);
+                    OnUserChatHistoryMessage(messageList);
                 } else if (_class.Equals(BacktoryConnectivityMessage.GROUP_CHAT_HISTORY_MESSAGE)) {
                     Debug.Log(BacktoryConnectivityMessage.GROUP_CHAT_HISTORY_MESSAGE);
 					GroupChatHistoryMessage historyMessage = (GroupChatHistoryMessage) 
 						fastJSON.JSON.ToObject(body, typeof(GroupChatHistoryMessage));
-					OnGroupChatHistoryMessage(historyMessage);
+					List<ChatMessage> messageList = parseMessageList(historyMessage.messageList, false);
+                    OnGroupChatHistoryMessage(messageList, historyMessage.groupId);
                 } else if (_class.Equals(BacktoryConnectivityMessage.OFFLINE_CHAT_MESSAGE_LIST)) {
                     Debug.Log(BacktoryConnectivityMessage.OFFLINE_CHAT_MESSAGE_LIST);
 					OfflineChatMessageList offlineMessageList = (OfflineChatMessageList) 
 						fastJSON.JSON.ToObject(body, typeof(OfflineChatMessageList));
-					if (offlineMessageList.messageList.Count == 0) {
-                        OnEmptyOffline();
-                        return;
-                    }
-                    for (int i = 0; i < offlineMessageList.messageList.Count; i++) {
-                        ComprehensiveChatMessaege innerMessage = offlineMessageList.messageList[i];
-                        // Debug.Log("deliveryId: " + innerMessage.deliveryId);
-                        stompWebsocketHandler.deliveryIds.Add(innerMessage.deliveryId);
-                        // Debug.Log("ids: " + stompWebsocketHandler.deliveryIds);
-                        if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_INVITATION_MESSAGE)) {
-                            ChatInvitationMessage invitationMessage = (ChatInvitationMessage) fastJSON.JSON.ToObject(fastJSON.JSON.ToJSON(innerMessage), typeof(ChatInvitationMessage));
-                            OnChatInvitationMessage(invitationMessage);
-                        } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_REMOVED_MESSAGE)) {
-                            UserRemovedMessage removeMessage = (UserRemovedMessage) fastJSON.JSON.ToObject
-                            (fastJSON.JSON.ToJSON(innerMessage), typeof(UserRemovedMessage));
-                            OnChatGroupUserRemovedMessage(removeMessage);
-                        } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.SIMPLE_CHAT_MESSAGE)) {
-                            SimpleChatMessage simpleMessage = (SimpleChatMessage) fastJSON.JSON.ToObject
-                            (fastJSON.JSON.ToJSON(innerMessage) , typeof(SimpleChatMessage));
-                            onSimpleMessage(simpleMessage);
-                        } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_ADDED_MESSAGE)) {
-                            UserAddedMessage addedMessage = (UserAddedMessage) fastJSON.JSON.ToObject
-                            (fastJSON.JSON.ToJSON(innerMessage), typeof(UserAddedMessage));
-                            OnChatGroupUserAddedMessage(addedMessage);
-                        } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_JOINED_MESSAGE)) {
-                            UserJoinedMessage joinedMessage = (UserJoinedMessage) fastJSON.JSON.ToObject
-                            (fastJSON.JSON.ToJSON(innerMessage), typeof(UserJoinedMessage));
-                            OnChatGroupUserJoinedMessage(joinedMessage);
-                        } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_LEFT_MESSAGE)) {
-                            UserLeftMessage leftMessage = (UserLeftMessage) fastJSON.JSON.ToObject
-                            (fastJSON.JSON.ToJSON(innerMessage), typeof(UserLeftMessage));
-                            OnChatGroupUserLeftMessage(leftMessage);
-                        }
-                    }
+					// if (offlineMessageList.messageList.Count == 0) {
+                    //     OnEmptyOffline();
+                    //     return;
+                    // }
+                    List<ChatMessage> messageList = parseMessageList(offlineMessageList.messageList, true);
+                    OnOfflineChatMessage(messageList);
                 }
                 
                 else if (_class.Equals(BacktoryConnectivityMessage.EXCEPTION)) {
@@ -309,6 +283,47 @@ public class ConnectivityServerHandler {
         });
     }
     
+    private List<ChatMessage> parseMessageList(List<ComprehensiveChatMessaege> chatMessageList, Boolean sendDelivery) {
+        List<ChatMessage> messageList = new List<ChatMessage>();
+        List<string> deliveryIdList = new List<string>();
+        for (int i = 0; i < chatMessageList.Count; i++) {
+            ComprehensiveChatMessaege innerMessage = chatMessageList[i];
+            deliveryIdList.Add(innerMessage.deliveryId);
+            if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_INVITATION_MESSAGE)) {
+                ChatInvitationMessage invitationMessage = (ChatInvitationMessage) fastJSON.JSON.ToObject(fastJSON.JSON.ToJSON(innerMessage), typeof(ChatInvitationMessage));
+                // OnChatInvitationMessage(invitationMessage);
+                messageList.Add(invitationMessage);
+            } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_REMOVED_MESSAGE)) {
+                UserRemovedMessage removeMessage = (UserRemovedMessage) fastJSON.JSON.ToObject
+                (fastJSON.JSON.ToJSON(innerMessage), typeof(UserRemovedMessage));
+                // OnChatGroupUserRemovedMessage(removeMessage);
+                messageList.Add(removeMessage);
+            } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.SIMPLE_CHAT_MESSAGE)) {
+                SimpleChatMessage simpleMessage = (SimpleChatMessage) fastJSON.JSON.ToObject
+                (fastJSON.JSON.ToJSON(innerMessage) , typeof(SimpleChatMessage));
+                // onSimpleMessage(simpleMessage);
+                messageList.Add(simpleMessage);
+            } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_ADDED_MESSAGE)) {
+                UserAddedMessage addedMessage = (UserAddedMessage) fastJSON.JSON.ToObject
+                (fastJSON.JSON.ToJSON(innerMessage), typeof(UserAddedMessage));
+                // OnChatGroupUserAddedMessage(addedMessage);
+                messageList.Add(addedMessage);
+            } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_JOINED_MESSAGE)) {
+                UserJoinedMessage joinedMessage = (UserJoinedMessage) fastJSON.JSON.ToObject
+                (fastJSON.JSON.ToJSON(innerMessage), typeof(UserJoinedMessage));
+                // OnChatGroupUserJoinedMessage(joinedMessage);
+                messageList.Add(joinedMessage);
+            } else if (innerMessage._type.Equals(BacktoryConnectivityMessage.CHAT_GROUP_USER_LEFT_MESSAGE)) {
+                UserLeftMessage leftMessage = (UserLeftMessage) fastJSON.JSON.ToObject
+                (fastJSON.JSON.ToJSON(innerMessage), typeof(UserLeftMessage));
+                // OnChatGroupUserLeftMessage(leftMessage);
+                messageList.Add(leftMessage);
+            }
+        }
+        if (sendDelivery)
+            stompWebsocketHandler.sendDeliveryList(deliveryIdList);
+        return messageList;
+    }
     private void onSimpleMessage(SimpleChatMessage simpleMessage) {
         Debug.Log(simpleMessage.groupId + " " + simpleMessage.senderId + " " + simpleMessage.message);
          if (simpleMessage.groupId == null) {

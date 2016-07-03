@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System;
+using System.Collections.Generic;
 
 public class CanvasController : MonoBehaviour {
 	// backtory
@@ -158,19 +159,31 @@ public class CanvasController : MonoBehaviour {
 		serverHandler.OnChatGroupUserJoinedMessage += onChatGroupUserJoinedMessage;
 		serverHandler.OnChatGroupUserAddedMessage += onChatGroupUserAddedMessage;
 		serverHandler.OnChatInvitationMessage += onChatInvitationMessage;
-		serverHandler.OnEmptyOffline += onEmptyOffline;
+		serverHandler.OnOfflineChatMessage += onOfflineChatMessage;
 	}
 	
 	public void onChatGroupCreatedMessage(ChatGroupCreatedMessage createdMessage) {
 		addToConsole("Created message: " + createdMessage.groupId);
 	}
 	
-	public void onUserChatHistoryMessage(UserChatHistoryMessage historyMessage) {
-		addToConsole("User chat history message received: " + historyMessage.messageList.Count);
+	public void onUserChatHistoryMessage(List<ChatMessage> messageList) {
+		addToConsole("User chat history message received: " + messageList.Count);
+		for (int i = 0; i < messageList.Count; i++) {
+			addToConsole("type: " + messageList[i]._type);
+			if (messageList[i]._type.Equals(BacktoryConnectivityMessage.SIMPLE_CHAT_MESSAGE)) {
+				addToConsole("message: " + ((SimpleChatMessage) messageList[i]).message);
+			}
+		}
 	}
 	
-	public void onGroupChatHistoryMessage(GroupChatHistoryMessage historyMessage) {
-		addToConsole("Group chat history message received: " + historyMessage.messageList.Count);
+	public void onGroupChatHistoryMessage(List<ChatMessage> messageList, string groupId) {
+		addToConsole("Group chat history message received: " + messageList.Count + " " + groupId);
+		for (int i = 0; i < messageList.Count; i++) {
+			addToConsole("type: " + messageList[i]._type);
+			if (messageList[i]._type.Equals(BacktoryConnectivityMessage.SIMPLE_CHAT_MESSAGE)) {
+				addToConsole("message: " + ((SimpleChatMessage) messageList[i]).message);
+			}
+		}
 	}
     
 	public void onGroupPushMessage(SimpleChatMessage chatMessage) {
@@ -223,8 +236,14 @@ public class CanvasController : MonoBehaviour {
 		addToConsole("Chat invitation message: " + invitationMessage.groupName);
 	}
 	
-	public void onEmptyOffline() {
-		addToConsole("Empty offline");
+	public void onOfflineChatMessage(List<ChatMessage> messageList) {
+		addToConsole("Offline Chat Message: " + messageList.Count);
+		for (int i = 0; i < messageList.Count; i++) {
+			addToConsole("type: " + messageList[i]._type);
+			if (messageList[i]._type.Equals(BacktoryConnectivityMessage.SIMPLE_CHAT_MESSAGE)) {
+				addToConsole("message: " + ((SimpleChatMessage) messageList[i]).message);
+			}
+		}
 	}
 	
 	public void onMatchFound(MatchFoundMessage matchFoundMessage) {

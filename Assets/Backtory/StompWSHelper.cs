@@ -164,10 +164,18 @@ public class StompWebsocketHandler {
     
     public void offlineMessageRequest() {
         String json = fastJSON.JSON.ToJSON(deliveryIds);
-        Debug.Log("json: " + json);
         stomp.webSocket.Send("SEND\n" +
                 "X-Backtory-Connectivity-Id:" + instanceId + "\n" +
                 "destination:" + "/app/chat/offline" + "\n\n" +
+                "{\"deliveryIdList\" : " + json + "}"
+                + "\n\0");
+    }
+    
+    public void sendDeliveryList(List<string> deliveryIdList) {
+        String json = fastJSON.JSON.ToJSON(deliveryIdList);
+        stomp.webSocket.Send("SEND\n" +
+                "X-Backtory-Connectivity-Id:" + instanceId + "\n" +
+                "destination:" + "/app/chat/deliveryList" + "\n\n" +
                 "{\"deliveryIdList\" : " + json + "}"
                 + "\n\0");
     }

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
 public class GroupChatHistoryMessage : BacktoryConnectivityMessage {
-    public List<SimpleChatMessage> messageList;
+    public List<ComprehensiveChatMessaege> messageList;
     public string groupId;
 }
